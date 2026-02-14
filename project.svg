@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+   <style>
+      .bg {
+         fill: #0D7377;
+      }
+
+      .txt {
+         fill: #FFFFFF;
+         font-family: "Segoe UI", sans-serif;
+         font-weight: 900;
+         text-anchor: middle;
+         text-align: center;
+         /* optional: dominant-baseline: middle; */
+      }
+   </style>
+
+   <rect class="bg" width="128" height="128" />
+
+   <g id="g_1Zeile_1Zeichen" style="font-size:133px" display="none">
+      <text class="txt" x="64" y="111">X</text>
+   </g>
+
+   <g id="g_1Zeile_2Zeichen" style="font-size:80px" display="visible">
+      <text class="txt" x="64" y="95">RA</text>
+   </g>
+
+   <g id="g_2Zeilen_2Zeichen" style="font-size:65px" display="none">
+      <text class="txt" x="64" y="58">XX</text>
+      <text class="txt" x="64" y="115">XX</text>
+   </g>
+
+   <g id="g_3Zeilen_3Zeichen" style="font-size:45px" display="none">
+      <text class="txt" x="64" y="43">XXX</text>
+      <text class="txt" x="64" y="81">XXX</text>
+      <text class="txt" x="64" y="118">XXX</text>
+   </g>
+
+   <g id="g_3Zeilen_6Zeichen" style="font-size:40px" display="none">
+      <text class="txt" x="64" y="41">xxxx</text>
+      <text class="txt" x="64" y="76">xxxx</text>
+      <text class="txt" x="64" y="111">xxxx</text>
+   </g>
+</svg>
