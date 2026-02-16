@@ -1,0 +1,24 @@
+# Glossar
+
+- `rclone`: CLI-Tool für Cloud-Storage-Operationen (Sync, Copy, Mount).
+- `WinFsp`: Dateisystem-Proxy für Windows; Voraussetzung für `rclone mount`.
+- `Remote`: In `rclone` definierter Cloud-Endpunkt, z. B. `gdrive:` oder `pcdrive:`.
+- `Mount`: Einbindung eines Remotes als Laufwerk (hier typischerweise `P:` und `G:`).
+- `Sync`: Spiegelung Quelle -> Ziel; Ziel wird an Quelle angepasst.
+- `Dry-Run`: Simulationslauf ohne echte Änderungen (`--dry-run`).
+- `Live-Run`: Produktiver Lauf mit echten Änderungen.
+- `Just-in-Time-Mount`: Mount wird nur bei Bedarf auf Zuruf gestartet.
+- `DetachedViaTask`: Startmodus, der Mounts über Scheduled Task entkoppelt von der OpenCode-Session startet.
+- `Priority`: Reihenfolge für Sync-Jobs (`1..x`), aufsteigend abgearbeitet.
+- `MaxParallel`: Maximale Anzahl gleichzeitig laufender Sync-Jobs pro Prioritätsstufe (hier max. 10).
+- `Exclude-From`: Datei mit Ausschlussmustern für Syncs.
+- `Filterpfad (rclone)`: Include-/Exclude-Muster sind relativ zur Quellwurzel und nutzen `/` als Trenner.
+- `Verzeichnis-Exclude rekursiv`: Für ganze Ordner inklusive Inhalt `/**` anhängen (z. B. `/AppData/Local/ElevatedDiagnostics/**`).
+- `--dump filters`: Gibt die wirksamen Filterregeln aus; nützlich zur Diagnose bei unerwarteten Treffern.
+- `Abschlussbericht`: Laufende Abschlussmeldung pro Job und Gesamtlauf mit Dauer, Änderungen und ExitCode.
+- `s1..s5`: Job-IDs in `facts.automation.syncs` in `.Secrets/config.rclone.json`.
+- `m1/m2`: Mount-Job-IDs in `facts.automation.mounts` (`pcdrive:` -> `P:`, `gdrive:` -> `G:`).
+- `RcloneMountsOnDemand`: Scheduled Task für ad-hoc gestartete, detached Mounts.
+- `RcloneMountsAtLogon`: Scheduled Task für dauerhaftes Auto-Mount beim Windows-Login.
+- `HEALTH_CHECK`: Störungs-Workflow mit Laufwerks-, Prozess-, Log- und Repo-Pfad-Check.
+- `facts.repo_local_path`: Erwarteter lokaler Repo-Pfad in `.Secrets/config.rclone.json` für Verschiebungsprüfung.

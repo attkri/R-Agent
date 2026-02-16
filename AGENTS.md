@@ -150,3 +150,9 @@ Folgende Projektquellen gehören zusätzlich zum aktuellen Kontext des Agenten:
 
    - Konzipiere Skripte so, dass sie als **Scheduled Task** oder **Windows Service** (z.B. via NSSM oder PowerShell Job) laufen.
    - Der Agent (du) soll den Status dieser Jobs prüfen und berichten können.
+
+## Anhang
+
+**Dokumenten-Schema:** [OpenCode AGENTS.md](https://opencode.ai/docs/rules/#manual-instructions-in-agentsmd)
+**Autor:** [Attila Krick](https://attilakrick.com/)
+**Stand:** 2026-02-20
