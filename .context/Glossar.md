@@ -16,9 +16,12 @@
 - `Verzeichnis-Exclude rekursiv`: Für ganze Ordner inklusive Inhalt `/**` anhängen (z. B. `/AppData/Local/ElevatedDiagnostics/**`).
 - `--dump filters`: Gibt die wirksamen Filterregeln aus; nützlich zur Diagnose bei unerwarteten Treffern.
 - `Abschlussbericht`: Laufende Abschlussmeldung pro Job und Gesamtlauf mit Dauer, Änderungen und ExitCode.
-- `s1..s5`: Job-IDs in `facts.automation.syncs` in `.Secrets/config.rclone.json`.
+- `s1..s5`: Job-IDs in `facts.automation.syncs` in `C:\Users\attila\.Secrets\RClone.Secrets.json`.
+- `bisync`: Bidirektionale Synchronisation (beide Richtungen); benötigt initialen `--resync`.
+- `--resync`: Initialisiert `bisync`-Paarung; bei ExitCode 7 automatisch erforderlich.
+- `/MySyncNow`: Globaler OpenCode-Command zum Starten aller R-Agent-Syncs.
 - `m1/m2`: Mount-Job-IDs in `facts.automation.mounts` (`pcdrive:` -> `P:`, `gdrive:` -> `G:`).
 - `RcloneMountsOnDemand`: Scheduled Task für ad-hoc gestartete, detached Mounts.
 - `RcloneMountsAtLogon`: Scheduled Task für dauerhaftes Auto-Mount beim Windows-Login.
 - `HEALTH_CHECK`: Störungs-Workflow mit Laufwerks-, Prozess-, Log- und Repo-Pfad-Check.
-- `facts.repo_local_path`: Erwarteter lokaler Repo-Pfad in `.Secrets/config.rclone.json` für Verschiebungsprüfung.
+- `facts.repo_local_path`: Erwarteter lokaler Repo-Pfad in `C:\Users\attila\.Secrets\RClone.Secrets.json` für Verschiebungsprüfung.

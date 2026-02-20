@@ -3,8 +3,69 @@ param(
     [string[]]$JobName = @(),
     [switch]$LiveRun,
     [switch]$DetachedViaTask,
-    [string]$ConfigJsonPath = ""
+    [string]$ConfigJsonPath = "C:\Users\attila\.Secrets\RClone.Secrets.json",
+    [string]$StatusDir = "C:\Users\attila\.logs\ASO\Status"
 )
+
+function Write-MountStatus {
+    param(
+        [Parameter(Mandatory = $true)][string]$StatusDir,
+        [Parameter(Mandatory = $true)][string]$Action,
+        [Parameter(Mandatory = $true)][object]$ConfigData,
+        [object[]]$Results = @()
+    )
+
+    if (-not (Test-Path -LiteralPath $StatusDir)) {
+        New-Item -Path $StatusDir -ItemType Directory -Force | Out-Null
+    }
+
+    $mountedDrives = @()
+    $unmountedDrives = @()
+
+    foreach ($m in $ConfigData.facts.automation.mounts) {
+        $drive = [string]$m.drive_letter
+        $driveName = $drive.TrimEnd(':')
+        $isMounted = $null -ne (Get-PSDrive -Name $driveName -ErrorAction SilentlyContinue)
+
+        if ($isMounted) {
+            $mountedDrives += $drive
+        }
+        else {
+            $unmountedDrives += $drive
+        }
+    }
+
+    $symbol = ""
+    $statusMessage = ""
+
+    if ($mountedDrives.Count -eq 0 -and $unmountedDrives.Count -gt 0) {
+        $symbol = "🔴"
+        $statusMessage = "{0} sind nicht gemountet." -f ($unmountedDrives -join " und ")
+    }
+    elseif ($mountedDrives.Count -gt 0 -and $unmountedDrives.Count -eq 0) {
+        $symbol = "🟢"
+        $statusMessage = "{0} sind gemountet." -f ($mountedDrives -join " und ")
+    }
+    else {
+        $symbol = "🟠"
+        $mountedStr = if ($mountedDrives.Count -gt 0) { ($mountedDrives -join " und ") + " sind gemountet" } else { "" }
+        $unmountedStr = if ($unmountedDrives.Count -gt 0) { ($unmountedDrives -join " und ") + " sind nicht gemountet" } else { "" }
+        $statusMessage = @($mountedStr, $unmountedStr | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join ", "
+    }
+
+    $statusObj = [PSCustomObject]@{
+        Id = "RCloneMountStatus"
+        TaskName = "RClone Mounting"
+        TaskDescription = "Zeigt den Status der RClone-Mounts auf diesem System an."
+        Symbole = $symbol
+        StatusMessage = $statusMessage
+        Timestamp = (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")
+    }
+
+    $statusPath = Join-Path $StatusDir "RCloneMountStatus.json"
+    $statusObj | ConvertTo-Json -Depth 10 | Out-File -FilePath $statusPath -Encoding UTF8 -Force
+    Write-Host "[STATUS] Status geschrieben: $statusPath"
+}
 
 function Resolve-CurrentUserId {
     if (-not [string]::IsNullOrWhiteSpace($env:USERDOMAIN)) {
@@ -81,7 +142,9 @@ if ($DetachedViaTask) {
         "Hidden",
         "-File",
         ('"{0}"' -f $PSCommandPath),
-        "-LiveRun"
+        "-LiveRun",
+        "-ConfigJsonPath",
+        ('"{0}"' -f $ConfigJsonPath)
     )
     $argumentString = [string]::Join(" ", $argumentList)
 
@@ -95,6 +158,21 @@ if ($DetachedViaTask) {
     exit 0
 }
 
+function Get-ConfigData {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw "Config-Datei nicht gefunden: $Path"
+    }
+
+    $raw = Get-Content -LiteralPath $Path -Raw
+    if ([string]::IsNullOrWhiteSpace($raw)) {
+        throw "Config-Datei ist leer: $Path"
+    }
+
+    return $raw | ConvertFrom-Json
+}
+
 $params = @{
     Kind = "mount"
     JobName = $JobName
@@ -106,4 +184,9 @@ if ($LiveRun) {
 }
 
 & $automationScript @params
-exit $LASTEXITCODE
+$exitCode = $LASTEXITCODE
+
+$configData = Get-ConfigData -Path $ConfigJsonPath
+Write-MountStatus -StatusDir $StatusDir -Action "mount" -ConfigData $configData
+
+exit $exitCode

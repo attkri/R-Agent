@@ -9,15 +9,15 @@
 
 $tokens = $null; 
 $errs = $null; 
-[System.Management.Automation.Language.Parser]::ParseFile("C:\Users\attila\Projects\R-Agent\.Utils\Invoke-RcloneAutomation.ps1", [ref]$tokens, [ref]$errs) | Out-Null
+[System.Management.Automation.Language.Parser]::ParseFile("C:\Users\attila\Projects\R-Agent\.Tools\Invoke-RcloneAutomation.ps1", [ref]$tokens, [ref]$errs) | Out-Null
 if ($null -ne $errs -and $errs.Count -gt 0) {
     "PWSH_PARSE=ERROR"
     $errs | ForEach-Object { $_.Message }
     exit 1 
 }
 "PWSH_PARSE=OK"
-$cfgPath = "C:\Users\attila\Projects\R-Agent\.Secrets\config.rclone.json"
-$scriptPath = "C:\Users\attila\Projects\R-Agent\.Utils\Invoke-RcloneAutomation.ps1"
+$cfgPath = "C:\Users\attila\.Secrets\RClone.Secrets.json"
+$scriptPath = "C:\Users\attila\Projects\R-Agent\.Tools\Invoke-RcloneAutomation.ps1"
 $cfg = Get-Content -LiteralPath $cfgPath -Raw | ConvertFrom-Json
 $sync = @($cfg.facts.automation.syncs | Where-Object { $_.id -eq "s3" }) | Select-Object -First 1
 if ($null -eq $sync) { 

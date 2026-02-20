@@ -1,4 +1,8 @@
 .history/**
-.Secrets/**
+.log/**
 tmp/**
 *.log
+*.tmp
+*.bak
+*.cache
+*.swp

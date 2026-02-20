@@ -1,8 +1,69 @@
 [CmdletBinding()]
 param(
     [string[]]$JobName = @(),
-    [string]$ConfigJsonPath = ""
+    [string]$ConfigJsonPath = "C:\Users\attila\.Secrets\RClone.Secrets.json",
+    [string]$StatusDir = "C:\Users\attila\.logs\ASO\Status"
 )
+
+function Write-MountStatus {
+    param(
+        [Parameter(Mandatory = $true)][string]$StatusDir,
+        [Parameter(Mandatory = $true)][string]$Action,
+        [Parameter(Mandatory = $true)][object]$ConfigData,
+        [object[]]$Results = @()
+    )
+
+    if (-not (Test-Path -LiteralPath $StatusDir)) {
+        New-Item -Path $StatusDir -ItemType Directory -Force | Out-Null
+    }
+
+    $mountedDrives = @()
+    $unmountedDrives = @()
+
+    foreach ($m in $ConfigData.facts.automation.mounts) {
+        $drive = [string]$m.drive_letter
+        $driveName = $drive.TrimEnd(':')
+        $isMounted = $null -ne (Get-PSDrive -Name $driveName -ErrorAction SilentlyContinue)
+
+        if ($isMounted) {
+            $mountedDrives += $drive
+        }
+        else {
+            $unmountedDrives += $drive
+        }
+    }
+
+    $symbol = ""
+    $statusMessage = ""
+
+    if ($mountedDrives.Count -eq 0 -and $unmountedDrives.Count -gt 0) {
+        $symbol = "🔴"
+        $statusMessage = "{0} sind nicht gemountet." -f ($unmountedDrives -join " und ")
+    }
+    elseif ($mountedDrives.Count -gt 0 -and $unmountedDrives.Count -eq 0) {
+        $symbol = "🟢"
+        $statusMessage = "{0} sind gemountet." -f ($mountedDrives -join " und ")
+    }
+    else {
+        $symbol = "🟠"
+        $mountedStr = if ($mountedDrives.Count -gt 0) { ($mountedDrives -join " und ") + " sind gemountet" } else { "" }
+        $unmountedStr = if ($unmountedDrives.Count -gt 0) { ($unmountedDrives -join " und ") + " sind nicht gemountet" } else { "" }
+        $statusMessage = @($mountedStr, $unmountedStr | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join ", "
+    }
+
+    $statusObj = [PSCustomObject]@{
+        Id = "RCloneMountStatus"
+        TaskName = "RClone Mounting"
+        TaskDescription = "Zeigt den Status der RClone-Mounts auf diesem System an."
+        Symbole = $symbol
+        StatusMessage = $statusMessage
+        Timestamp = (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")
+    }
+
+    $statusPath = Join-Path $StatusDir "RCloneMountStatus.json"
+    $statusObj | ConvertTo-Json -Depth 10 | Out-File -FilePath $statusPath -Encoding UTF8 -Force
+    Write-Host "[STATUS] Status geschrieben: $statusPath"
+}
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -121,7 +182,7 @@ function Remove-LogonMountTask {
 $repoRoot = Get-RepoRoot
 
 if ([string]::IsNullOrWhiteSpace($ConfigJsonPath)) {
-    $ConfigJsonPath = Join-Path $repoRoot ".Secrets\config.rclone.json"
+    $ConfigJsonPath = "C:\Users\attila\.Secrets\RClone.Secrets.json"
 }
 
 $configData = Get-ConfigData -Path $ConfigJsonPath
@@ -172,6 +233,8 @@ $taskRemoved = Remove-LogonMountTask -TaskName $autoMountTaskName
 if (-not $taskRemoved) {
     $errors.Add("[STOP] Geplanter Task konnte nicht entfernt werden: $autoMountTaskName")
 }
+
+Write-MountStatus -StatusDir $StatusDir -Action "unmount" -ConfigData $configData
 
 if ($errors.Count -gt 0) {
     exit 1

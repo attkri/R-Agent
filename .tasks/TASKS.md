@@ -2,6 +2,9 @@
 
 ## Aktiv
 
+- **Log-File-Abschluss**
+  - Wenn der Zync abgeschlossen ist steht in der Log-Datei sowie's schon gehört die wichtigsten Eckdaten Das Synchronisierungsvorgangs Jetzt soll noch dort zusätzlich den Zu Beginn dass man das gleich mit dem Auge sieht dass der Sync Vorgang erfolgreich abgeschlossen wurde mit und dann kommen die Eckdaten
+
 - **Logging / Info**
   - Wenn eine Synchronisierung läuft die besonders lange dauert wäre es schön wenn man eine Möglichkeit hätte die zum Beispiel anzeigt wie lange sie schon läuft oder wie lang es noch laufen wird oder eine Fortschritt in Prozent Oder ähnliches
 

@@ -72,7 +72,7 @@ function Resolve-RclonePath {
         return $cmd.Source
     }
 
-    throw "rclone.exe wurde nicht gefunden. Lege rclone in den PATH oder hinterlege den Pfad in .Secrets/config.rclone.json unter facts.rclone.exe_path."
+    throw "rclone.exe wurde nicht gefunden. Lege rclone in den PATH oder hinterlege den Pfad in C:\Users\attila\.Secrets\RClone.Secrets.json unter facts.rclone.exe_path."
 }
 
 function Resolve-RcloneConfigPath {
@@ -133,7 +133,7 @@ function Build-RemoteTarget {
 $repoRoot = Get-RepoRoot
 
 if ([string]::IsNullOrWhiteSpace($ConfigJsonPath)) {
-    $ConfigJsonPath = Join-Path $repoRoot ".Secrets\config.rclone.json"
+    $ConfigJsonPath = "C:\Users\attila\.Secrets\RClone.Secrets.json"
 }
 
 if ([string]::IsNullOrWhiteSpace($LogRoot)) {

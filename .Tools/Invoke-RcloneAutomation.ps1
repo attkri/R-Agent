@@ -101,7 +101,8 @@ function Build-Options {
     param(
         [Parameter(Mandatory = $false)][object]$Options,
         [Parameter(Mandatory = $true)][string]$RepoRoot,
-        [Parameter(Mandatory = $true)][string]$Kind
+        [Parameter(Mandatory = $true)][string]$Kind,
+        [bool]$SkipExcludeFrom = $false
     )
 
     $result = New-Object System.Collections.Generic.List[string]
@@ -118,6 +119,11 @@ function Build-Options {
             if ($current -eq "--exclude-from") {
                 if ($i + 1 -ge $optionArray.Count) {
                     throw "Option '--exclude-from' ohne Wert in Konfiguration."
+                }
+
+                if ($SkipExcludeFrom) {
+                    $i++
+                    continue
                 }
 
                 $next = [string]$optionArray[$i + 1]
@@ -174,6 +180,10 @@ function Build-Options {
             }
 
             if ($key -eq "exclude-from") {
+                if ($SkipExcludeFrom) {
+                    continue
+                }
+
                 $stringValue = Resolve-ExcludeFromPath -Value $stringValue -RepoRoot $RepoRoot
                 if (-not (Test-Path -LiteralPath $stringValue)) {
                     throw "Exclude-Datei nicht gefunden: $stringValue"
@@ -273,6 +283,62 @@ function Test-MountPointInUse {
     return (Test-Path -LiteralPath $mountPoint)
 }
 
+function Get-JobMode {
+    param([Parameter(Mandatory = $true)][object]$Job)
+
+    if ($null -ne $Job.PSObject.Properties["mode"]) {
+        $mode = [string]$Job.mode
+        if (-not [string]::IsNullOrWhiteSpace($mode)) {
+            return $mode.ToLowerInvariant()
+        }
+    }
+
+    return "sync"
+}
+
+function Get-JobExcludes {
+    param([Parameter(Mandatory = $true)][object]$Job)
+
+    if ($null -eq $Job.PSObject.Properties["excludes"]) {
+        return @()
+    }
+
+    $raw = $Job.excludes
+    if ($null -eq $raw) {
+        return @()
+    }
+
+    $items = @()
+    foreach ($entry in @($raw)) {
+        $text = [string]$entry
+        if ([string]::IsNullOrWhiteSpace($text)) {
+            continue
+        }
+
+        $items += $text.Trim()
+    }
+
+    return $items
+}
+
+function Write-JobExcludesFile {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Patterns,
+        [Parameter(Mandatory = $true)][string]$LogRoot,
+        [Parameter(Mandatory = $true)][string]$RunStamp,
+        [Parameter(Mandatory = $true)][string]$JobId
+    )
+
+    $excludeDir = Join-Path $LogRoot "_excludes"
+    New-Item -ItemType Directory -Path $excludeDir -Force | Out-Null
+
+    $safeJobId = [regex]::Replace($JobId, "[^A-Za-z0-9_-]", "_")
+    $filePath = Join-Path $excludeDir ("{0}_{1}.txt" -f $RunStamp, $safeJobId)
+
+    Set-Content -LiteralPath $filePath -Value $Patterns -Encoding UTF8
+    return $filePath
+}
+
 function New-SyncSpec {
     param(
         [Parameter(Mandatory = $true)][object]$Job,
@@ -286,23 +352,49 @@ function New-SyncSpec {
     $jobName = [string]$Job.name
     $jobId = Get-JobId -Job $Job
     $priority = Get-JobPriority -Job $Job
+    $mode = Get-JobMode -Job $Job
+    $jobExcludes = @(Get-JobExcludes -Job $Job)
+    $useCentralExcludes = $jobExcludes.Count -gt 0
     $safeJobId = [regex]::Replace($jobId, "[^A-Za-z0-9_-]", "_")
     $jobLog = Join-Path $LogRoot ("{0}_{1}.log" -f $RunStamp, $safeJobId)
-    $options = Build-Options -Options $Job.options -RepoRoot $RepoRoot -Kind "sync"
+    $options = Build-Options -Options $Job.options -RepoRoot $RepoRoot -Kind "sync" -SkipExcludeFrom:$useCentralExcludes
 
     $args = New-Object System.Collections.Generic.List[string]
-    $args.Add("sync")
-    $args.Add([string]$Job.source)
-    $args.Add([string]$Job.destination)
-    foreach ($opt in $options) { $args.Add($opt) }
 
-    if (-not ($args -contains "--stats")) {
-        $args.Add("--stats")
-        $args.Add("30s")
+    if ($mode -eq "bisync") {
+        $args.Add("bisync")
+        $args.Add([string]$Job.source)
+        $args.Add([string]$Job.destination)
+    }
+    else {
+        $args.Add("sync")
+        $args.Add([string]$Job.source)
+        $args.Add([string]$Job.destination)
     }
 
-    if (-not ($args -contains "--stats-one-line-date")) {
-        $args.Add("--stats-one-line-date")
+    foreach ($opt in $options) { $args.Add($opt) }
+
+    if ($useCentralExcludes) {
+        $excludeFile = Write-JobExcludesFile -Patterns $jobExcludes -LogRoot $LogRoot -RunStamp $RunStamp -JobId $jobId
+        $args.Add("--exclude-from")
+        $args.Add($excludeFile)
+    }
+
+    if ($mode -eq "bisync") {
+        if (-not ($args -contains "--stats")) {
+            $args.Add("--stats")
+            $args.Add("30s")
+        }
+    }
+    else {
+        if (-not ($args -contains "--stats")) {
+            $args.Add("--stats")
+            $args.Add("30s")
+        }
+
+        if (-not ($args -contains "--stats-one-line-date")) {
+            $args.Add("--stats-one-line-date")
+        }
     }
 
     if (-not ($args -contains "--log-level") -and -not (Test-HasVerboseFlag -Args $args)) {
@@ -323,6 +415,7 @@ function New-SyncSpec {
         Name = $jobName
         Id = $jobId
         Priority = $priority
+        Mode = $mode
         LogPath = $jobLog
         Args = @($args)
     }
@@ -340,6 +433,56 @@ function Format-Duration {
     }
 
     return ("{0:N1}s" -f $Span.TotalSeconds)
+}
+
+function Write-SyncStatus {
+    param(
+        [Parameter(Mandatory = $true)][string]$JobId,
+        [Parameter(Mandatory = $true)][string]$JobName,
+        [Parameter(Mandatory = $true)][ValidateSet("started", "completed", "failed")][string]$State,
+        [Parameter(Mandatory = $false)][string]$Details = "",
+        [Parameter(Mandatory = $false)][string]$StatusDir = "C:\Users\attila\.logs\ASO\Status"
+    )
+
+    if (-not (Test-Path -LiteralPath $StatusDir)) {
+        New-Item -Path $StatusDir -ItemType Directory -Force | Out-Null
+    }
+
+    $symbol = ""
+    $statusMessage = ""
+
+    switch ($State) {
+        "started" {
+            $symbol = "🟠"
+            $statusMessage = "Job '$JobName' (ID=$JobId) gestartet."
+        }
+        "completed" {
+            $symbol = "🟢"
+            $statusMessage = "Job '$JobName' (ID=$JobId) erfolgreich abgeschlossen."
+            if (-not [string]::IsNullOrWhiteSpace($Details)) {
+                $statusMessage = "Job '$JobName' (ID=$JobId) erfolgreich abgeschlossen. $Details"
+            }
+        }
+        "failed" {
+            $symbol = "🔴"
+            $statusMessage = "Job '$JobName' (ID=$JobId) fehlgeschlagen."
+            if (-not [string]::IsNullOrWhiteSpace($Details)) {
+                $statusMessage = "Job '$JobName' (ID=$JobId) fehlgeschlagen. $Details"
+            }
+        }
+    }
+
+    $statusObj = [PSCustomObject]@{
+        Id = "RCloneSyncStatus_$JobId"
+        TaskName = "RClone Sync - $JobName"
+        TaskDescription = "Zeigt den Status der RClone-Synchronisation auf diesem System an."
+        Symbole = $symbol
+        StatusMessage = $statusMessage
+        Timestamp = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
+    }
+
+    $statusPath = Join-Path $StatusDir "RCloneSyncStatus_$JobId.json"
+    $statusObj | ConvertTo-Json -Depth 10 | Out-File -FilePath $statusPath -Encoding UTF8 -Force
 }
 
 function Get-SyncReportFromLog {
@@ -401,6 +544,8 @@ function Invoke-SyncPriorityGroup {
             Write-Host "[SYNC] Starte Job '$($spec.Name)' (ID=$($spec.Id), Priority=$($spec.Priority))"
             Write-Host "[SYNC] $RcloneExe $($spec.Args -join ' ')"
 
+            Write-SyncStatus -JobId $spec.Id -JobName $spec.Name -State "started"
+
             $job = Start-Job -Name ("rclone-sync-" + $spec.Id) -ArgumentList $RcloneExe, @($spec.Args) -ScriptBlock {
                 param($exe, $argList)
                 & $exe @argList *> $null
@@ -448,11 +593,38 @@ function Invoke-SyncPriorityGroup {
 
             $running.RemoveAt($i)
 
+            if ($exitCode -eq 7 -and $spec.Mode -eq "bisync") {
+                Write-Host "[BISYNC] Job '$($spec.Name)' benoetigt --resync. Fuehre initialen Abgleich durch..."
+                
+                $resyncArgs = New-Object System.Collections.Generic.List[string]
+                foreach ($a in $spec.Args) {
+                    if ($a -eq "--dry-run") { continue }
+                    $resyncArgs.Add($a)
+                }
+                $resyncArgs.Add("--resync")
+                
+                Write-Host "[BISYNC] $RcloneExe $($resyncArgs -join ' ')"
+                & $RcloneExe @resyncArgs *> $null
+                $resyncExit = $LASTEXITCODE
+                
+                if ($resyncExit -eq 0) {
+                    Write-Host "[BISYNC] --resync erfolgreich. Wiederhole normalen Lauf..."
+                    & $RcloneExe @($spec.Args) *> $null
+                    $exitCode = $LASTEXITCODE
+                    $duration = (Get-Date) - $entry.StartedAt
+                }
+                else {
+                    Write-Warning "[BISYNC] --resync fehlgeschlagen mit ExitCode $resyncExit"
+                    $exitCode = $resyncExit
+                }
+            }
+
             $logMetrics = Get-SyncReportFromLog -LogPath $spec.LogPath
             $report = [pscustomobject]@{
                 Name = $spec.Name
                 Id = $spec.Id
                 Priority = $spec.Priority
+                Mode = $spec.Mode
                 Duration = (Format-Duration -Span $duration)
                 DurationSeconds = [math]::Round($duration.TotalSeconds, 1)
                 Transferred = [string]$logMetrics.Transferred
@@ -464,8 +636,9 @@ function Invoke-SyncPriorityGroup {
             $Reports.Add($report)
 
             Write-Host "[ABSCHLUSS] Job '$($report.Name)' (ID=$($report.Id)) Dauer=$($report.Duration) Geaendert=$($report.Transferred) ExitCode=$($report.ExitCode)"
-
-            if ($job.State -ne "Completed" -or $exitCode -ne 0) {
+            
+            if ($exitCode -ne 0) {
+                Write-SyncStatus -JobId $spec.Id -JobName $spec.Name -State "failed" -Details "ExitCode=$exitCode"
                 $msg = "[SYNC] Job '$($spec.Name)' (ID=$($spec.Id), Priority=$($spec.Priority)) fehlgeschlagen mit ExitCode $exitCode. Log: $($spec.LogPath)"
                 Write-Warning $msg
                 $Errors.Add($msg)
@@ -474,6 +647,7 @@ function Invoke-SyncPriorityGroup {
                 }
             }
             else {
+                Write-SyncStatus -JobId $spec.Id -JobName $spec.Name -State "completed" -Details "Dauer=$($report.Duration), Geaendert=$($report.Transferred)"
                 Write-Host "[SYNC] Job '$($spec.Name)' erfolgreich. Log: $($spec.LogPath)"
             }
         }
@@ -483,7 +657,7 @@ function Invoke-SyncPriorityGroup {
 $repoRoot = Get-RepoRoot
 
 if ([string]::IsNullOrWhiteSpace($ConfigJsonPath)) {
-    $ConfigJsonPath = Join-Path $repoRoot ".Secrets\config.rclone.json"
+    $ConfigJsonPath = 'C:\Users\attila\.Secrets\RClone.Secrets.json'
 }
 
 if ([string]::IsNullOrWhiteSpace($LogRoot)) {

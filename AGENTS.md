@@ -17,9 +17,9 @@ Folgende Projektquellen gehören zusätzlich zum aktuellen Kontext des Agenten:
 - Du bist der Iniziator und Hauptakteur für die Automatisierung von Cloud-Workflows, d.h. du überwachst auch die Ausführung.
 - Du nutzt Tools für die Parallele Ausführung von Tasks und bietest eine Möglichkeit den User über den Status regelmäßig zu informieren (z.B. via Log-Files).
 - Änderungen an den Regeln die mit dem User festgelegt wurden, müssen hier in der AGENTS.md dokumentiert!
-- Sensible oder systemnahe Daten (Pfade, Rechnernamen, Passwörter, API-KEYs, etc.) dürfen nur in `.Secrets\config.rclone.json` gespeichert werden.
-- Lies `AGENTS.md` und `.Secrets\config.rclone.json` um deinen Kontext zu füllen.
-  - Wenn diese Daten nicht existieren, dann frage den User nach den für dieses Fachgebiet relevanten persönlichen Daten (z.B. bevorzugte Laufwerksbuchstaben, Bandbreiten-Limits) und schreibe diese in `.Secrets\config.rclone.json` bzw. `AGENTS.md`.
+- Sensible oder systemnahe Daten (Pfade, Rechnernamen, Passwörter, API-KEYs, etc.) dürfen nur in `C:\Users\attila\.Secrets\RClone.Secrets.json` gespeichert werden.
+- Lies `AGENTS.md` und `C:\Users\attila\.Secrets\RClone.Secrets.json`, um deinen Kontext zu füllen.
+  - Wenn diese Daten nicht existieren, dann frage den User nach den für dieses Fachgebiet relevanten persönlichen Daten (z.B. bevorzugte Laufwerksbuchstaben, Bandbreiten-Limits) und schreibe diese in `C:\Users\attila\.Secrets\RClone.Secrets.json` bzw. `AGENTS.md`.
 - Vor Änderungen an einer der bestehenden Dateien in diesem Repo immer Prüfen ob sie geändert wurden. Da derUser parallel, während der Agent arbeitet auch Änderungen vor nimmt die nicht verloren gehen dürfen.
 
 ## Verbote
@@ -30,14 +30,14 @@ Folgende Projektquellen gehören zusätzlich zum aktuellen Kontext des Agenten:
 
 ## Quellen der Wahrheit
 
-- .Secrets\**config.rclone.json**
+- `C:\Users\attila\.Secrets\RClone.Secrets.json`
   - Enthält sensible Konfigurationsdaten (z.B. API-Keys, Passwörter, bevorzugte Laufwerksbuchstaben). Nur für dich als Agent zugänglich.
 - **AGENTS.md**
   - Dokumentiert die Regeln, Anforderungen und Änderungen für deine Automatisierungsaufgaben. Alle Änderungen an den Regeln müssen hier dokumentiert werden.
 - .tasks/**TASKS.md**
   - Enthält geplante Aufgaben für Dich und den User.
   - Nicht selbständig erledigen, sondern zu Beginn einer Session Vorschlagen diese abzuarbeiten.
-- .Utils/***.ps1**
+- .Tools/***.ps1**
   - Hilfsfunktions-Skripte.
 - **README.md**
   - Dokumentation für den User, z.B. Installationsanleitung, Nutzungshinweise.
@@ -65,11 +65,11 @@ Folgende Projektquellen gehören zusätzlich zum aktuellen Kontext des Agenten:
 | --- | --- |
 | `google_workspace_list_tasks` | Liest bestehende Aufgaben aus einer Task-Liste (z. B. `@default`). |
 | `google_workspace_create_task` | Legt eine neue Aufgabe in Google Workspace Tasks an. |
-| `pwsh -NoProfile -File ".Utils/Start-RcloneMounts.ps1" -LiveRun -DetachedViaTask` | Startet konfigurierte Mount-Jobs (`P:`, `G:`) detached über Scheduled Task. |
-| `pwsh -NoProfile -File ".Utils/Stop-RcloneMounts.ps1"` | Stoppt konfigurierte Mounts und entfernt den Autostart-Task `RcloneMountsAtLogon`. |
-| `pwsh -File ".Utils/Invoke-RcloneSyncs.ps1" -JobName <name|id> -LiveRun` | Führt einen oder mehrere konfigurierte Sync-Jobs produktiv aus. |
-| `pwsh -File ".Utils/Invoke-RcloneAutomation.ps1" -Kind mount|sync ...` | Generischer Runner für Jobs aus `.Secrets\config.rclone.json`. |
-| `pwsh -File ".Utils/Invoke-RcloneSync.ps1" ...` | Direkter Einzel-Sync/Copy-Runner außerhalb des Job-Systems. |
+| `pwsh -NoProfile -File ".Tools/Start-RcloneMounts.ps1" -LiveRun -DetachedViaTask` | Startet konfigurierte Mount-Jobs (`P:`, `G:`) detached über Scheduled Task. |
+| `pwsh -NoProfile -File ".Tools/Stop-RcloneMounts.ps1"` | Stoppt konfigurierte Mounts und entfernt den Autostart-Task `RcloneMountsAtLogon`. |
+| `pwsh -File ".Tools/Invoke-RcloneSyncs.ps1" -JobName <name|id> -LiveRun` | Führt einen oder mehrere konfigurierte Sync-Jobs produktiv aus. |
+| `pwsh -File ".Tools/Invoke-RcloneAutomation.ps1" -Kind mount|sync ...` | Generischer Runner für Jobs aus `C:\Users\attila\.Secrets\RClone.Secrets.json`. |
+| `pwsh -File ".Tools/Invoke-RcloneSync.ps1" ...` | Direkter Einzel-Sync/Copy-Runner außerhalb des Job-Systems. |
 
 ## Projektentscheidungen (mit User abgestimmt)
 
@@ -87,7 +87,7 @@ Folgende Projektquellen gehören zusätzlich zum aktuellen Kontext des Agenten:
 - Schnellcheck Laufwerke: `pwsh -NoProfile -Command 'Test-Path P:\; Test-Path G:\'`
 - Prozesscheck Mounts: `pwsh -NoProfile -Command 'Get-CimInstance Win32_Process -Filter "name = ''rclone.exe''" | Where-Object { $_.CommandLine -match '' mount '' } | Select-Object ProcessId,CreationDate,CommandLine'`
 - Logcheck: `pwsh -NoProfile -Command 'Get-ChildItem ".logs" -File | Sort-Object LastWriteTime -Descending | Select-Object -First 5 Name,LastWriteTime'`
-- Repo-Pfad-Check: `pwsh -NoProfile -Command '$current=(Resolve-Path ".").Path; $cfg=Get-Content ".Secrets\config.rclone.json" -Raw | ConvertFrom-Json; $expected=[string]$cfg.facts.repo_local_path; if([string]::IsNullOrWhiteSpace($expected)){"repo_local_path fehlt in config"} elseif($current -ieq $expected){"repo_path_ok=true"} else {"repo_path_ok=false"; "expected=$expected"; "current=$current"}'`
+- Repo-Pfad-Check: `pwsh -NoProfile -Command '$current=(Resolve-Path ".").Path; $cfg=Get-Content "C:\Users\attila\.Secrets\RClone.Secrets.json" -Raw | ConvertFrom-Json; $expected=[string]$cfg.facts.repo_local_path; if([string]::IsNullOrWhiteSpace($expected)){"repo_local_path fehlt in config"} elseif($current -ieq $expected){"repo_path_ok=true"} else {"repo_path_ok=false"; "expected=$expected"; "current=$current"}'`
 - Bei `repo_path_ok=false` den User informieren: Projekt wurde verschoben; u.a. Scheduled Tasks, Skriptpfade und weitere Automationspfade müssen angepasst werden.
 - Logbasis: `.logs\yyyyMMdd_HHmmss_<id>.log`
 - Nur betroffene Mounts neu starten; keine pauschalen Neustarts.
@@ -95,7 +95,7 @@ Folgende Projektquellen gehören zusätzlich zum aktuellen Kontext des Agenten:
 ### Laufwerke anhängen (MOUNT)
 
 - Ziel: so schnell wie möglich mounten, ohne blockierende Vorab- oder Abschlussprüfungen.
-- Sofortstart: `pwsh -NoProfile -File ".Utils/Start-RcloneMounts.ps1" -LiveRun -DetachedViaTask`
+- Sofortstart: `pwsh -NoProfile -File ".Tools/Start-RcloneMounts.ps1" -LiveRun -DetachedViaTask`
 - Standardablauf: Just-in-Time-Mount durch den Agenten wie gehabt.
 - Der Detached-Start sorgt dafür, dass Mounts beim Schließen von OpenCode nicht beendet werden.
 - Nach dem Mount fragt der Agent am Ende den User, ob das Verhalten `dauerhaft` oder `temporär` sein soll.
@@ -107,19 +107,20 @@ Folgende Projektquellen gehören zusätzlich zum aktuellen Kontext des Agenten:
 
 ### Laufwerke trennen (UNMOUNT)
 
-- Standardbefehl: `pwsh -NoProfile -File ".Utils/Stop-RcloneMounts.ps1"`
+- Standardbefehl: `pwsh -NoProfile -File ".Tools/Stop-RcloneMounts.ps1"`
 - Einsatz: bei Konfigurationswechsel, hängenden Mounts oder vor Wartung/Neustart.
 - Entfernt beim Unmount zusätzlich den Scheduled Task `RcloneMountsAtLogon`.
 - Nach dem Stop dürfen die Laufwerksbuchstaben (`P:`, `G:`) nicht mehr erreichbar sein
 
 ### Synchronisation (SYNC)
 
-- Standardbefehl: `pwsh -File ".Utils/Invoke-RcloneSyncs.ps1" -LiveRun`
-- Quelle der Wahrheit: `.Secrets\config.rclone.json` unter `facts.automation.syncs`.
+- Standardbefehl: `pwsh -File ".Tools/Invoke-RcloneSyncs.ps1" -LiveRun`
+- Quelle der Wahrheit: `C:\Users\attila\.Secrets\RClone.Secrets.json` unter `facts.automation.syncs`.
 - Reihenfolge: `priority` aufsteigend (`1..x`).
 - Parallelität: pro Prioritätsstufe parallel bis max. `10` Jobs (`-MaxParallel 10`).
 - Strikte Priorität: nächsthöhere Priorität startet erst, wenn die aktuelle Prioritätsgruppe abgeschlossen ist.
 - Job-Filter: `-JobName` akzeptiert Name **oder** ID (z. B. `s5`).
+- Ausnahmen/Excludes: zentral pro Job in `facts.automation.syncs[].excludes`.
 - Logging: pro Job eine Datei nach Schema `yyyyMMdd_HHmmss_<id>.log` in `.logs\`.
 - Abschlussbericht: am Ende je Job sowie für den Gesamtlauf mit Dauer, Änderungsumfang (laut Log, falls verfügbar) und ExitCode.
 
@@ -151,8 +152,8 @@ Folgende Projektquellen gehören zusätzlich zum aktuellen Kontext des Agenten:
    - Konzipiere Skripte so, dass sie als **Scheduled Task** oder **Windows Service** (z.B. via NSSM oder PowerShell Job) laufen.
    - Der Agent (du) soll den Status dieser Jobs prüfen und berichten können.
 
-## Anhang
+## Metadaten
 
 **Dokumenten-Schema:** [OpenCode AGENTS.md](https://opencode.ai/docs/rules/#manual-instructions-in-agentsmd)
-**Autor:** [Attila Krick](https://attilakrick.com/)
 **Stand:** 2026-02-20
+**Autor:** [Attila Krick](https://attilakrick.com/)

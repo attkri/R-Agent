@@ -1,0 +1,32 @@
+{
+  "MaxParallelRuns": 4,
+  "OpenCodeCommand": "opencode",
+  "OpenCodeWorkingDirectory": "",
+  "Autostart": {
+    "Enabled": true,
+    "Mode": "hkcu_run"
+  },
+  "Chat": {
+    "Id": 900,
+    "TimeoutSeconds": 180,
+    "PromptTemplate": "Du bist der ECAS-Chat-Agent.\n\nNutzer-Nachricht:\n{{userMessage}}\n\nKontext:\n{{payload}}\n\nAntworte ausschließlich als ein JSON-Objekt mit genau diesen Feldern:\nid, action, title, message, reference, timestamp\n\nRegeln:\n- action ist eine der folgenden Aktionen: notify, chat_reply, status_changed\n- timestamp im ISO-8601-Format mit Zeitzone\n- Für status_changed muss message genau einer dieser Werte sein: rot, gelb, grün, info\n- Keine zusätzlichen Felder\n- Keine Markdown-Ausgabe"
+  },
+  "Triggers": [
+    {
+      "Id": 1,
+      "Name": "telegram_poll",
+      "Enabled": true,
+      "IntervalSeconds": 10,
+      "TimeoutSeconds": 90,
+      "PromptTemplate": "Du bist der ECAS-Event-Agent für Telegram-Empfang.\n\nTrigger-Paket:\n{{payload}}\n\nAntworte ausschließlich als ein JSON-Objekt mit genau diesen Feldern:\nid, action, title, message, reference, timestamp\n\nRegeln:\n- action ist eine der folgenden Aktionen: notify, chat_reply, status_changed\n- timestamp im ISO-8601-Format mit Zeitzone\n- Für status_changed muss message genau einer dieser Werte sein: rot, gelb, grün, info\n- Keine zusätzlichen Felder\n- Keine Markdown-Ausgabe"
+    },
+    {
+      "Id": 2,
+      "Name": "rclone_sync_timer",
+      "Enabled": true,
+      "IntervalSeconds": 1800,
+      "TimeoutSeconds": 3600,
+      "PromptTemplate": "Du bist der ECAS-Event-Agent für RClone-Sync.\n\nTrigger-Paket:\n{{payload}}\n\nAntworte ausschließlich als ein JSON-Objekt mit genau diesen Feldern:\nid, action, title, message, reference, timestamp\n\nRegeln:\n- action ist eine der folgenden Aktionen: notify, chat_reply, status_changed\n- timestamp im ISO-8601-Format mit Zeitzone\n- Für status_changed muss message genau einer dieser Werte sein: rot, gelb, grün, info\n- Keine zusätzlichen Felder\n- Keine Markdown-Ausgabe"
+    }
+  ]
+}
