@@ -1,0 +1,7 @@
+{
+  "From.ID": "diag-s1b",
+  "From.Name": "Projects -> Google",
+  "Status.Level": "INFO",
+  "Status.Message": "rclone wird ausgeführt.",
+  "Status.Timestamp": "2026-02-22T00:23:45"
+}

@@ -61,15 +61,15 @@ Folgende Projektquellen gehören zusätzlich zum aktuellen Kontext des Agenten:
 
 ## Tools
 
-| Aufruf | Beschreibung |
-| --- | --- |
-| `google_workspace_list_tasks` | Liest bestehende Aufgaben aus einer Task-Liste (z. B. `@default`). |
-| `google_workspace_create_task` | Legt eine neue Aufgabe in Google Workspace Tasks an. |
-| `pwsh -NoProfile -File ".Tools/Start-RcloneMounts.ps1" -LiveRun -DetachedViaTask` | Startet konfigurierte Mount-Jobs (`P:`, `G:`) detached über Scheduled Task. |
-| `pwsh -NoProfile -File ".Tools/Stop-RcloneMounts.ps1"` | Stoppt konfigurierte Mounts und entfernt den Autostart-Task `RcloneMountsAtLogon`. |
-| `pwsh -File ".Tools/Invoke-RcloneSyncs.ps1" -JobName <name|id> -LiveRun` | Führt einen oder mehrere konfigurierte Sync-Jobs produktiv aus. |
-| `pwsh -File ".Tools/Invoke-RcloneAutomation.ps1" -Kind mount|sync ...` | Generischer Runner für Jobs aus `C:\Users\attila\.Secrets\RClone.Secrets.json`. |
-| `pwsh -File ".Tools/Invoke-RcloneSync.ps1" ...` | Direkter Einzel-Sync/Copy-Runner außerhalb des Job-Systems. |
+| Aufruf                                                                            | Beschreibung                                                                              |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `google_workspace_list_tasks`                                                     | Liest bestehende Aufgaben aus einer Task-Liste (z. B. `@default`).                        |
+| `google_workspace_create_task`                                                    | Legt eine neue Aufgabe in Google Workspace Tasks an.                                      |
+| `pwsh -NoProfile -File ".Tools/Start-RcloneMounts.ps1" -LiveRun -DetachedViaTask` | Startet konfigurierte Mount-Jobs (`P:`, `G:`) detached über Scheduled Task.               |
+| `pwsh -NoProfile -File ".Tools/Stop-RcloneMounts.ps1"`                            | Stoppt konfigurierte Mounts und entfernt den Autostart-Task `RcloneMountsAtLogon`.        |
+| `pwsh -File ".Tools/Invoke-RcloneSyncs.ps1" -JobName <name                        | id> -LiveRun` Führt einen oder mehrere konfigurierte Sync-Jobs produktiv aus.             |
+| `pwsh -File ".Tools/Invoke-RcloneAutomation.ps1" -Kind mount                      | sync ...` Generischer Runner für Jobs aus `C:\Users\attila\.Secrets\RClone.Secrets.json`. |
+| `pwsh -File ".Tools/Invoke-RcloneSync.ps1" ...`                                   | Direkter Einzel-Sync/Copy-Runner außerhalb des Job-Systems.                               |
 
 ## Projektentscheidungen (mit User abgestimmt)
 
@@ -78,6 +78,9 @@ Folgende Projektquellen gehören zusätzlich zum aktuellen Kontext des Agenten:
 - **Stand 2026-02-15:** Mounts starten standardmäßig auf Zuruf; Auto-Mount beim Login wird nur bei User-Entscheidung `dauerhaft` aktiviert.
 - **Stand 2026-02-15:** Sync-Jobs laufen prioritätsgesteuert und parallel (maximal 10 gleichzeitig).
 - **Stand 2026-02-15:** Nach jedem Sync-Lauf wird ein Abschlussbericht ausgegeben (wenn verfügbar mit Dauer, geänderten Daten/Objekten und ExitCode).
+- **Stand 2026-02-21:** Das bisherige `.Tools`-Runner-System ist abgelöst; operative Jobs liegen als autarke Skripte in `.Scripts\*.ps1` (ein Job = ein Skript).
+- **Stand 2026-02-21:** Ausführung, Intervallsteuerung und Scheduling erfolgen extern über `AgentCommandWorker`; dieses Repo liefert nur die ausführbaren Job-Skripte.
+- **Stand 2026-02-21:** Statusmeldungen werden je Job als `<JobGuid>.Status.jsonc` im jeweiligen Worker-Arbeitsverzeichnis geschrieben (Mindestabstand 2 Sekunden).
 
 ## Deine Workflows
 

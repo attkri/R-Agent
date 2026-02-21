@@ -2,36 +2,76 @@
 
 ## Überblick
 
-R-Agent automatisiert `rclone`-Workflows für Windows 11 mit Fokus auf Mounts und Synchronisation.
-Die zentrale Konfiguration liegt in `C:\Users\attila\.Secrets\RClone.Secrets.json`.
-Mount- und Sync-Jobs werden deklarativ in dieser Datei gepflegt und über PowerShell-Skripte ausgeführt.
-Die aktuelle Projektentscheidung ist bewusst unverschlüsselte Cloud-Ablage, damit Webzugriff und Zugriff von anderen Systemen ohne zusätzliche `rclone`-Konfiguration möglich sind.
-Logs werden direkt in `.logs/` geschrieben.
+R-Agent enthält aktuell ausschließlich autarke `rclone`-Skripte für Mount- und Sync-Jobs unter Windows 11.
+
+Die Jobsteuerung (Intervall, Aktivierung, Ausführung) erfolgt bewusst **nicht** in diesem Repository, sondern über das externe Projekt `AgentCommandWorker`.
+
+Die zentrale sensible Konfiguration bleibt in `C:\Users\attila\.Secrets\RClone.Secrets.json`.
+
+Cloud-Ablage ist gemäß Projektentscheidung derzeit unverschlüsselt, um Webzugriff und Zugriff von anderen Systemen ohne zusätzliche `rclone`-Konfiguration zu ermöglichen.
 
 ## Voraussetzungen
 
 - Windows 11
+
 - PowerShell 7.x
-- rclone (empfohlen unter `C:\Program Files\rclone\rclone.exe`)
-- WinFsp (nur für Mounts erforderlich)
-- Konfigurierte Remotes in `rclone.conf` (aktuell z. B. `gdrive:` und `pcdrive:`)
 
-## Konfiguration
+- rclone (z. B. `C:\Program Files\rclone\rclone.exe`)
 
-- Datei: `C:\Users\attila\.Secrets\RClone.Secrets.json`
-- Mount-Jobs: `facts.automation.mounts`
-- Sync-Jobs: `facts.automation.syncs`
-- Ausnahmen je Job: `facts.automation.syncs[].excludes`
+- WinFsp (nur für Mount-Skripte erforderlich)
 
-## Nutzung
+- Konfigurierte Remotes in `rclone.conf` (z. B. `gdrive:`, `pcdrive:`)
 
-- Mounts starten: `pwsh -File ".Tools/Start-RcloneMounts.ps1" -LiveRun`
-- Mounts stoppen: `pwsh -File ".Tools/Stop-RcloneMounts.ps1"`
-- Alle Syncs als Dry-Run: `pwsh -File ".Tools/Invoke-RcloneSyncs.ps1"`
-- Einzelnen Sync live starten: `pwsh -File ".Tools/Invoke-RcloneSyncs.ps1" -JobName <name> -LiveRun`
-- Generischer Runner: `pwsh -File ".Tools/Invoke-RcloneAutomation.ps1" -Kind sync|mount ...`
+- Konfigurationsdatei `C:\Users\attila\.Secrets\RClone.Secrets.json`
+
+## Aktueller Ist-Zustand
+
+- Es gibt **nur** jobbezogene Skripte in `./.Scripts`.
+
+- Das frühere `.Tools`-basierte Runner-System wurde entfernt.
+
+- Jedes Skript ist autark und ruft keine anderen Projektskripte auf.
+
+- Statusmeldungen werden als JSONC-Datei im aktuellen Arbeitsverzeichnis geschrieben.
+
+- Der Status-Dateiname ist GUID-basiert: `<JobGuid>.Status.jsonc`.
+
+- Zwischen zwei Statusschreibvorgängen wird ein Mindestabstand (Standard: 2 Sekunden) eingehalten.
+
+## Skripte
+
+- `./.Scripts/Mount-m1-pcdrive-p.ps1`
+
+- `./.Scripts/Mount-m2-gdrive-g.ps1`
+
+- `./.Scripts/Sync-s1-projects-to-google.ps1`
+
+- `./.Scripts/Sync-s2-config-opencode-to-google.ps1`
+
+- `./.Scripts/Sync-s3-local-share-opencode-to-google.ps1`
+
+- `./.Scripts/Sync-s4-attila-home-to-pcloud-bisync.ps1`
+
+- `./.Scripts/Sync-s5-hot-to-google-bisync.ps1`
+
+## Job-Integration (AgentCommandWorker)
+
+- Jobdateien liegen in `C:\Users\attila\Projects\AgentCommandWorker\Jobs`.
+
+- Dateinamen folgen der Job-GUID: `<Job.ID>.Job.jsonc`.
+
+- `Job.Command` setzt das Working Directory direkt über `pwsh.exe -WorkingDirectory ...`.
+
+- `Job.Enabled` ist initial für alle Jobs `false`, außer dem freigegebenen Startjob `m1`.
+
+## Aufgabe und Grenzen dieses Repositories
+
+- **Aufgabe hier:** Pflege und Weiterentwicklung der autarken `rclone`-Skripte in `./.Scripts` inklusive robuster Statusausgabe.
+
+- **Nicht Aufgabe hier:** Orchestrierung, Scheduler-Logik, Jobauswahl, Intervallsteuerung, Queueing und Worker-Lifecycle.
+
+- Diese Orchestrierungsaufgaben liegen vollständig im externen Projekt `AgentCommandWorker`.
 
 ## Logging
 
-- Ablageort: `.logs/`
-- Namensschema: `yyyyMMdd_HHmmss_<id>.log`
+- Laufzeitlogs der Skripte werden in `./.logs` nach dem Muster `yyyyMMdd_HHmmss_<id>.log` geschrieben.
